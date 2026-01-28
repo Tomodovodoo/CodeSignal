@@ -67,44 +67,56 @@ GET, DELETE, FIELDS, COMMIT, ROLLBACK (in order of occurrence).
 
 from __future__ import annotations
 
-class key:
-    def __init__(self, key: str, field: str):
-        self.key = key
-        self.field = field
+class Database:
+    def __init__(self):
+        self.store = {}
     
-    def setHandler(self, query: list[str]):
-        
-    def getHandler(self, query: list[str]):
-        
-    def deleteHandler(self, query: list[str]):
-        
-    def fieldsHandler(self, query: list[str]):
-        
-    def beginHandler(self, query: list[str]):
-        
-    def commitHandler(self, query: list[str]):
-        
-    def rollbackHandler(self, query: list[str]):
-        
+    def setHandler(self, key, field, value):
+        self.store[key] = {field: value}
+
+    def getHandler(self, key, field):
+        if self.store[key][field] is None:
+            print("")
+        elif self.store[key][field] is not None:
+            print(self.store[key][field])
+        else:
+            raise ValueError(f"Key {key!r} or field {field!r} not found")
+
+    def deleteHandler(self, key, field):
+        pass
+
+    def fieldsHandler(self, key):
+        pass
+
+    def beginHandler(self):
+        pass
+
+    def commitHandler(self):
+        pass
+
+    def rollbackHandler(self):
+        pass
+
     
 
 def solution(queries: list[list[str]]) -> list[str]:
     for query in queries:
-        queryType = query[0]
+        queryType, key, field, value = (query+ [None, None, None, None])[:4]
+
         if queryType == "SET":
-            key.setHandler(query)
+            Database.setHandler(key, field, value)
         elif queryType == "GET":
-            key.getHandler(query)
+            Database.getHandler(key, field)
         elif queryType == "DELETE":
-            key.deleteHandler(query)
+            Database.deleteHandler(key, field)
         elif queryType == "FIELDS":
-            key.fieldsHandler(query)
+            Database.fieldsHandler(key)
         elif queryType == "BEGIN":
-            key.beginHandler(query)
+            Database.beginHandler()
         elif queryType == "COMMIT":
-            key.commitHandler(query)
+            Database.commitHandler()
         elif queryType == "ROLLBACK":
-            key.rollbackHandler(query)
+            Database.rollbackHandler()
         else:
             raise ValueError(f"Unknown query type: {queryType!r}")
     raise NotImplementedError
