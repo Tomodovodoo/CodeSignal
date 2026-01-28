@@ -70,85 +70,120 @@ from __future__ import annotations
 class Database:
     def __init__(self):
         self.store: dict[str, dict[str, str]] = {}
-    
+        self.tx_stack: list[dict[str, dict[str, str | None]]] = []
+
     def setHandler(self, key, field, value):
-        try:
-            self.store[key](field, value)
-        except KeyError:
-            self.store[key] = {}
-            self.store[key].setdefault(field, value)
+        if len(self.tx_stack) == 0:
+            self.store.setdefault(key, {})[field] = value
+            return
+        layer = self.tx_stack[-1]
+        layer.setdefault(key, {})[field] = value
     
     def getHandler(self, key, field):
-        return self.store.get(key, {}).get(field, "")
+        val = self._resolveValue(key, field)
+        return "" if val is None else val
 
     def deleteHandler(self, key, field):
-        value = self.getHandler(key, field)
-        if value == "":
+        if self._resolveValue(key, field) is None:
             return "false"
-        remove = self.store[key].pop(field)
+
+        if len(self.tx_stack) == 0:
+            self.store.get(key, {}).pop(field, None)
+            if key in self.store and len(self.store[key]) == 0:
+                self.store.pop(key, None)
+            return "true"
+
+        layer = self.tx_stack[-1]
+        layer.setdefault(key, {})[field] = None
         return "true"
 
     def fieldsHandler(self, key):
-        if key not in self.store:
-            print("")
-        elif self.store[key] is not None:
-            fields = []
-            for fieldDict in self.store[key].keys():
-                fields.append(fieldDict)
-            fields.sort(key=lambda x: x[0])
-            for field in fields:
-                field.join("=")
-            print(",".join(fields))
-        else:
-            raise ValueError(f"Key {key!r} not found")
+        view = dict(self.store.get(key, {}))
+
+        for layer in self.tx_stack:
+            if key not in layer:
+                continue
+            for field, value in layer[key].items():
+                if value is None:
+                    view.pop(field, None)
+                else:
+                    view[field] = value
+
+        if len(view) == 0:
+            return ""
+        items = sorted(view.items(), key=lambda kv: kv[0])
+        return ",".join(f"{field}={value}" for field, value in items)
 
     def beginHandler(self):
-        pass
+        self.tx_stack.append({})
 
     def commitHandler(self):
-        pass
+        if len(self.tx_stack) == 0:
+            return "false"
+
+        top = self.tx_stack.pop()
+        if len(self.tx_stack) > 0:
+            parent = self.tx_stack[-1]
+            for key, fields in top.items():
+                parent_fields = parent.setdefault(key, {})
+                for field, value in fields.items():
+                    parent_fields[field] = value
+        else:
+            for key, fields in top.items():
+                for field, value in fields.items():
+                    if value is None:
+                        if key in self.store:
+                            self.store[key].pop(field, None)
+                            if len(self.store[key]) == 0:
+                                self.store.pop(key, None)
+                    else:
+                        self.store.setdefault(key, {})[field] = value
+
+        return "true"
 
     def rollbackHandler(self):
-        pass
+        if len(self.tx_stack) == 0:
+            return "false"
+        self.tx_stack.pop()
+        return "true"
+
+    def _resolveValue(self, key: str, field: str) -> str | None:
+        for layer in reversed(self.tx_stack):
+            if key not in layer:
+                continue
+            if field not in layer[key]:
+                continue
+            return layer[key][field]
+        return self.store.get(key, {}).get(field)
 
     
 
 def solution(queries: list[list[str]]) -> list[str]:
     db = Database()
+    outputs = []
     for query in queries:
         queryType, key, field, value = (query+ [None, None, None, None])[:4]
 
         if queryType == "SET":
             db.setHandler(key, field, value)
         elif queryType == "GET":
-            db.getHandler(key, field)
+            outputs.append(db.getHandler(key, field))
         elif queryType == "DELETE":
-            db.deleteHandler(key, field)
+            outputs.append(db.deleteHandler(key, field))
         elif queryType == "FIELDS":
-            db.fieldsHandler(key)
+            outputs.append(db.fieldsHandler(key))
         elif queryType == "BEGIN":
             db.beginHandler()
         elif queryType == "COMMIT":
-            db.commitHandler()
+            outputs.append(db.commitHandler())
         elif queryType == "ROLLBACK":
-            db.rollbackHandler()
+            outputs.append(db.rollbackHandler())
         else:
             raise ValueError(f"Unknown query type: {queryType!r}")
-    raise NotImplementedError
+    return outputs
 
 
 if __name__ == "__main__":
-    sample = [
-        ["SET", "u1", "name", "tom"],
-        ["BEGIN"],
-        ["SET", "u1", "name", "tom2"],
-        ["SET", "u2", "name", "tom2"],
-        ["DELETE", "u1", "name"],
-        ["GET", "u1", "name"],
-        ]
-    print(solution(sample))
-
-""" 
     sample = [
         ["SET", "u1", "name", "tom"],
         ["BEGIN"],
@@ -166,4 +201,3 @@ if __name__ == "__main__":
             "Implement solution() in this file, then run: python3 Verification/verify_03_transactional_kv_store.py",
             file=sys.stderr,
         )
-"""
