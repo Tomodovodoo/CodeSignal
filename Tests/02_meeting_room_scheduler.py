@@ -58,25 +58,25 @@ from __future__ import annotations
 
 def solution(queries: list[list[str]]) -> list[str]:
     agenda: dict[str, list[tuple[int, int, str]]] = {}
-    outputs: list[str] = []
+    output: list[str] = []
 
     for query in queries:
         queryType = query[0]
         
         if queryType == "BOOK":
-            outputs.append(bookHandler(query, agenda))
+            output.append(bookHandler(query, agenda))
         elif queryType == "CANCEL":
-            outputs.append(cancelHandler(query, agenda))
+            output.append(cancelHandler(query, agenda))
         elif queryType == "MOVE":
-            outputs.append(moveHandler(query, agenda))
+            output.append(moveHandler(query, agenda))
         elif queryType == "FREE":
-            outputs.append(freeHandler(query, agenda))
+            output.append(freeHandler(query, agenda))
         elif queryType == "AGENDA":
-            outputs.append(agendaHandler(query, agenda))
+            output.append(agendaHandler(query, agenda))
         else:
             raise ValueError(f"Unknown query type: {queryType!r}")
 
-    return outputs
+    return output
 
 
 def bookHandler(query, agenda):
@@ -106,19 +106,19 @@ def cancelHandler(query, agenda):
     room = str(query[1])
     title = str(query[2])
 
-    events = agenda.get(room, [])
-    idx = None
-    best = None
-    for i, (agenda_start, agenda_end, agenda_title) in enumerate(events):
-        if agenda_title != title:
-            continue
-        cand = (agenda_start, agenda_end, agenda_title)
-        if best is None or cand < best:
-            best = cand
-            idx = i
-    if idx is None:
+    # Get room dict values
+    events = agenda.setdefault(room, [])
+
+    potentialRemove = []
+    for agenda_start, agenda_end, agenda_title in events:
+        if agenda_title == title:
+            potentialRemove.append((agenda_start, agenda_end, agenda_title))
+
+    if len(potentialRemove) == 0:
         return "false"
-    del events[idx]
+
+    potentialRemove.sort(key=lambda x: (x[0], x[1], x[2]))
+    events.remove(potentialRemove[0])
     return "true"
 
             
@@ -132,20 +132,20 @@ def moveHandler(query, agenda):
     if new_start >= new_end:
         return "false"
 
-    events = agenda.get(room, [])
-    idx = None
-    best = None
-    for i, (agenda_start, agenda_end, agenda_title) in enumerate(events):
-        if agenda_title != title:
-            continue
-        cand = (agenda_start, agenda_end, agenda_title)
-        if best is None or cand < best:
-            best = cand
-            idx = i
-    if idx is None:
+    # Get room dict values
+    events = agenda.setdefault(room, [])
+
+    potentialRemove = []
+    for agenda_start, agenda_end, agenda_title in events:
+        if agenda_title == title:
+            potentialRemove.append((agenda_start, agenda_end, agenda_title))
+
+    if len(potentialRemove) == 0:
         return "false"
 
-    old_event = events.pop(idx)
+    potentialRemove.sort(key=lambda x: (x[0], x[1], x[2]))
+    old_event = potentialRemove[0]
+    events.remove(old_event)
 
     # Fail check if we cannot add event to cleared agenda
     for agenda_start, agenda_end, agenda_title in events:
@@ -169,40 +169,50 @@ def freeHandler(query, agenda):
     if start >= end:
         return "0"
 
-    events = agenda.get(room, [])
-    segments: list[tuple[int, int]] = []
+    # Get room dict values
+    events = agenda.setdefault(room, [])
+
+    free_minutes = end - start
+    unavailableRanges = []
     for agenda_start, agenda_end, agenda_title in events:
-        ss, ee = max(start, agenda_start), min(end, agenda_end)
+        ss = max(start, agenda_start)
+        ee = min(end, agenda_end)
         if ss < ee:
-            segments.append((ss, ee))
+            unavailableRanges.append((ss, ee))
 
-    segments.sort()
-    covered = 0
-    cur_s = None
-    cur_e = None
-    for ss, ee in segments:
-        if cur_s is None:
-            cur_s, cur_e = ss, ee
+    unavailableRanges.sort(key=lambda x: x[0])
+    removed_minutes = 0
+    current_start = None
+    current_end = None
+    for ss, ee in unavailableRanges:
+        if current_start is None:
+            current_start, current_end = ss, ee
             continue
-        if ss <= cur_e:
-            cur_e = max(cur_e, ee)
+        if ss <= current_end:
+            current_end = max(current_end, ee)
         else:
-            covered += cur_e - cur_s
-            cur_s, cur_e = ss, ee
-    if cur_s is not None and cur_e is not None:
-        covered += cur_e - cur_s
+            removed_minutes += current_end - current_start
+            current_start, current_end = ss, ee
+    if current_start is not None and current_end is not None:
+        removed_minutes += current_end - current_start
 
-    return str((end - start) - covered)
+    return str(free_minutes - removed_minutes)
             
 def agendaHandler(query, agenda):
     room = str(query[1])
-    events = agenda.get(room, [])
+    events = agenda.setdefault(room, [])
     if not events:
         return ""
     
+    # Sort by start time
+    events.sort(key=lambda x: (x[0], x[1], x[2]))
+    
     # Format output
-    events_sorted = sorted(events, key=lambda x: (x[0], x[1], x[2]))
-    return ",".join(f"{agenda_start}-{agenda_end}:{agenda_title}" for agenda_start, agenda_end, agenda_title in events_sorted)
+    output = []
+    for agenda_start, agenda_end, agenda_title in events:
+        output.append(f"{agenda_start}-{agenda_end}:{agenda_title}")
+    
+    return ",".join(output)
     
 
 
