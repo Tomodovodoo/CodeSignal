@@ -47,8 +47,29 @@ from __future__ import annotations
 
 
 def solution(queries: list[list[str]]) -> list[str]:
-    # TODO: implement
-    raise NotImplementedError
+    for query in queries:
+        if query[0] == "SCOREBOARD":
+            scoreboardHandler(query)
+        if query[0] == "SUBMIT":
+            submitHandler(query)
+    
+
+
+
+def scoreboardHandler(query: list[str]) -> list[str]:
+    time = int(query[1])
+    user = int(query[2])
+    problem = int(query[3])
+    verdict = int(query[4])
+
+
+
+def scoreboardHandler(query: list[str]) -> list[str]:
+
+
+    
+
+
 
 
 if __name__ == "__main__":
