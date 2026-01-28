@@ -47,25 +47,63 @@ from __future__ import annotations
 
 
 def solution(queries: list[list[str]]) -> list[str]:
+    peopleTracker = {}
+    WATracker = {}
+    timeTracker = {}
+
     for query in queries:
-        if query[0] == "SCOREBOARD":
-            scoreboardHandler(query)
         if query[0] == "SUBMIT":
-            submitHandler(query)
+            peopleTracker, WATracker, timeTracker = submitHandler(query, peopleTracker, WATracker, timeTracker)
+
+        if query[0] == "SCOREBOARD":
+            scoreboard = scoreboardHandler(query, peopleTracker, WATracker, timeTracker)
+
+    return scoreboard
+
+
+        
+def submitHandler(query: list[str], peopleTracker: dict[str, list[str]], WATracker: dict[str, int], timeTracker: dict[str, int]) -> list[str]:
+    time = int(query[1])
+    user = str(query[2])
+    problem = str(query[3])
+    verdict = str(query[4])
+
+    if user not in peopleTracker:
+        peopleTracker[user] = [problem]
+    if user not in WATracker:
+        WATracker[user] = 0
+    if user not in timeTracker:
+        timeTracker[user] = time
+
+    if verdict == "WA":
+        WATracker[user] += 1    
+    if verdict == "AC":
+        peopleTracker[user].append(problem)
+        timeTracker[user] = time
+
+    return peopleTracker, WATracker, timeTracker
+
+
+def scoreboardHandler(query: list[str], scoreboard: list[str], peopleTracker: dict[str, list[str]], WATracker: dict[str, int], timeTracker: dict[str, int]) -> list[str]:
+    k = int(query[2])
+    scoreboardStruct = []
+    for user in peopleTracker:
+        problemsSolved = len(peopleTracker[user])
+        penalty = timeTracker[user] + 20 * WATracker[user]
+        scoreboardStruct.append([user, problemsSolved, penalty])
+
+    constructScoreboard(scoreboardStruct, k)
+ 
+
+def constructScoreboard(scoreboardStruct: list[list[str,int,int]], k:int) -> str:
+    scoreboard = ""
+
+
+
     
 
 
-
-def scoreboardHandler(query: list[str]) -> list[str]:
-    time = int(query[1])
-    user = int(query[2])
-    problem = int(query[3])
-    verdict = int(query[4])
-
-
-
-def scoreboardHandler(query: list[str]) -> list[str]:
-
+    
 
     
 
