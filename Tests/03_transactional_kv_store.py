@@ -69,24 +69,38 @@ from __future__ import annotations
 
 class Database:
     def __init__(self):
-        self.store = {}
+        self.store: dict[str, dict[str, str]] = {}
     
     def setHandler(self, key, field, value):
-        self.store[key] = {field: value}
-
+        try:
+            self.store[key](field, value)
+        except KeyError:
+            self.store[key] = {}
+            self.store[key].setdefault(field, value)
+    
     def getHandler(self, key, field):
-        if self.store[key][field] is None:
-            print("")
-        elif self.store[key][field] is not None:
-            print(self.store[key][field])
-        else:
-            raise ValueError(f"Key {key!r} or field {field!r} not found")
+        return self.store.get(key, {}).get(field, "")
 
     def deleteHandler(self, key, field):
-        pass
+        value = self.getHandler(key, field)
+        if value == "":
+            return "false"
+        remove = self.store[key].pop(field)
+        return "true"
 
     def fieldsHandler(self, key):
-        pass
+        if key not in self.store:
+            print("")
+        elif self.store[key] is not None:
+            fields = []
+            for fieldDict in self.store[key].keys():
+                fields.append(fieldDict)
+            fields.sort(key=lambda x: x[0])
+            for field in fields:
+                field.join("=")
+            print(",".join(fields))
+        else:
+            raise ValueError(f"Key {key!r} not found")
 
     def beginHandler(self):
         pass
@@ -100,29 +114,41 @@ class Database:
     
 
 def solution(queries: list[list[str]]) -> list[str]:
+    db = Database()
     for query in queries:
         queryType, key, field, value = (query+ [None, None, None, None])[:4]
 
         if queryType == "SET":
-            Database.setHandler(key, field, value)
+            db.setHandler(key, field, value)
         elif queryType == "GET":
-            Database.getHandler(key, field)
+            db.getHandler(key, field)
         elif queryType == "DELETE":
-            Database.deleteHandler(key, field)
+            db.deleteHandler(key, field)
         elif queryType == "FIELDS":
-            Database.fieldsHandler(key)
+            db.fieldsHandler(key)
         elif queryType == "BEGIN":
-            Database.beginHandler()
+            db.beginHandler()
         elif queryType == "COMMIT":
-            Database.commitHandler()
+            db.commitHandler()
         elif queryType == "ROLLBACK":
-            Database.rollbackHandler()
+            db.rollbackHandler()
         else:
             raise ValueError(f"Unknown query type: {queryType!r}")
     raise NotImplementedError
 
 
 if __name__ == "__main__":
+    sample = [
+        ["SET", "u1", "name", "tom"],
+        ["BEGIN"],
+        ["SET", "u1", "name", "tom2"],
+        ["SET", "u2", "name", "tom2"],
+        ["DELETE", "u1", "name"],
+        ["GET", "u1", "name"],
+        ]
+    print(solution(sample))
+
+""" 
     sample = [
         ["SET", "u1", "name", "tom"],
         ["BEGIN"],
@@ -140,3 +166,4 @@ if __name__ == "__main__":
             "Implement solution() in this file, then run: python3 Verification/verify_03_transactional_kv_store.py",
             file=sys.stderr,
         )
+"""
