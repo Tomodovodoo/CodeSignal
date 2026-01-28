@@ -67,9 +67,46 @@ GET, DELETE, FIELDS, COMMIT, ROLLBACK (in order of occurrence).
 
 from __future__ import annotations
 
+class key:
+    def __init__(self, key: str, field: str):
+        self.key = key
+        self.field = field
+    
+    def setHandler(self, query: list[str]):
+        
+    def getHandler(self, query: list[str]):
+        
+    def deleteHandler(self, query: list[str]):
+        
+    def fieldsHandler(self, query: list[str]):
+        
+    def beginHandler(self, query: list[str]):
+        
+    def commitHandler(self, query: list[str]):
+        
+    def rollbackHandler(self, query: list[str]):
+        
+    
 
 def solution(queries: list[list[str]]) -> list[str]:
-    # TODO: implement
+    for query in queries:
+        queryType = query[0]
+        if queryType == "SET":
+            key.setHandler(query)
+        elif queryType == "GET":
+            key.getHandler(query)
+        elif queryType == "DELETE":
+            key.deleteHandler(query)
+        elif queryType == "FIELDS":
+            key.fieldsHandler(query)
+        elif queryType == "BEGIN":
+            key.beginHandler(query)
+        elif queryType == "COMMIT":
+            key.commitHandler(query)
+        elif queryType == "ROLLBACK":
+            key.rollbackHandler(query)
+        else:
+            raise ValueError(f"Unknown query type: {queryType!r}")
     raise NotImplementedError
 
 
