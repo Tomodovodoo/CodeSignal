@@ -57,8 +57,38 @@ from __future__ import annotations
 
 
 def solution(queries: list[list[str]]) -> list[str]:
-    # TODO: implement
-    raise NotImplementedError
+    # Agenda, Dictionary of start time key: list of (start time, end time, title)
+    agenda = dict[int, list[tuple[int, int, str]]]
+
+    for query in queries:
+        queryType = query[0]
+        
+        if queryType == "BOOK":
+            agenda = bookHandler(query, agenda)
+        elif queryType == "CANCEL":
+            agenda = cancelHandler(query, agenda)
+        elif queryType == "MOVE":
+            agenda = moveHandler(query, agenda)
+        elif queryType == "FREE":
+            agenda = freeHandler(query, agenda)
+        elif queryType == "AGENDA":
+            print(agendaHandler(query, agenda))
+
+
+    
+def bookHandler(query, agenda):
+    room = str(query[1])
+    start = int(query[2])
+    end = int(query[3])
+    title = str(query[4])
+
+def cancelHandler():
+
+def moveHandler():
+
+def freeHandler():
+
+def agendaHandler():
 
 
 if __name__ == "__main__":

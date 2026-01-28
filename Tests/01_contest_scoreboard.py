@@ -47,67 +47,53 @@ from __future__ import annotations
 
 
 def solution(queries: list[list[str]]) -> list[str]:
-    peopleTracker = {}
-    WATracker = {}
-    timeTracker = {}
+    # Track per (user, problem): wrong attempts before AC + solved flag.
+    per_user_problem: dict[str, dict[str, list[int | bool]]] = {}
 
-    for query in queries:
-        if query[0] == "SUBMIT":
-            peopleTracker, WATracker, timeTracker = submitHandler(query, peopleTracker, WATracker, timeTracker)
+    # Track per user: (solved_count, penalty_sum).
+    totals: dict[str, tuple[int, int]] = {}
 
-        if query[0] == "SCOREBOARD":
-            scoreboard = scoreboardHandler(query, peopleTracker, WATracker, timeTracker)
+    outputs: list[str] = []
 
-    return scoreboard
+    for q in queries:
+        kind = q[0]
+        if kind == "SUBMIT":
+            t = int(q[1])
+            user = q[2]
+            problem = q[3]
+            verdict = q[4]
 
+            user_state = per_user_problem.setdefault(user, {})
+            problem_state = user_state.get(problem)
+            if problem_state is None:
+                # [wrong_attempts_before_ac, solved(bool)]
+                problem_state = [0, False]
+                user_state[problem] = problem_state
 
-        
-def submitHandler(query: list[str], peopleTracker: dict[str, list[str]], WATracker: dict[str, int], timeTracker: dict[str, int]) -> list[str]:
-    time = int(query[1])
-    user = str(query[2])
-    problem = str(query[3])
-    verdict = str(query[4])
+            if bool(problem_state[1]):
+                continue  # ignore submissions after solved
 
-    if user not in peopleTracker:
-        peopleTracker[user] = [problem]
-    if user not in WATracker:
-        WATracker[user] = 0
-    if user not in timeTracker:
-        timeTracker[user] = time
+            if verdict == "WA":
+                problem_state[0] = int(problem_state[0]) + 1
+            elif verdict == "AC":
+                wrong = int(problem_state[0])
+                problem_state[1] = True
+                solved, penalty = totals.get(user, (0, 0))
+                totals[user] = (solved + 1, penalty + t + 20 * wrong)
+            else:
+                raise ValueError(f"Unknown verdict: {verdict!r}")
 
-    if verdict == "WA":
-        WATracker[user] += 1    
-    if verdict == "AC":
-        peopleTracker[user].append(problem)
-        timeTracker[user] = time
+        elif kind == "SCOREBOARD":
+            k = int(q[2])
+            ranked = [(u, s, p) for u, (s, p) in totals.items() if s > 0]
+            ranked.sort(key=lambda x: (-x[1], x[2], x[0]))
+            top = ranked[:k]
+            outputs.append(",".join(f"{u}:{s}:{p}" for u, s, p in top) if top else "")
 
-    return peopleTracker, WATracker, timeTracker
+        else:
+            raise ValueError(f"Unknown query type: {kind!r}")
 
-
-def scoreboardHandler(query: list[str], scoreboard: list[str], peopleTracker: dict[str, list[str]], WATracker: dict[str, int], timeTracker: dict[str, int]) -> list[str]:
-    k = int(query[2])
-    scoreboardStruct = []
-    for user in peopleTracker:
-        problemsSolved = len(peopleTracker[user])
-        penalty = timeTracker[user] + 20 * WATracker[user]
-        scoreboardStruct.append([user, problemsSolved, penalty])
-
-    constructScoreboard(scoreboardStruct, k)
- 
-
-def constructScoreboard(scoreboardStruct: list[list[str,int,int]], k:int) -> str:
-    scoreboard = ""
-
-
-
-    
-
-
-    
-
-    
-
-
+    return outputs
 
 
 if __name__ == "__main__":
