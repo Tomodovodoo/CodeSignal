@@ -57,23 +57,26 @@ from __future__ import annotations
 
 
 def solution(queries: list[list[str]]) -> list[str]:
-    # Agenda, Dictionary of start time key: list of (start time, end time, title)
-    agenda = dict[str, list[tuple(int, int, str)]]
+    agenda: dict[str, list[tuple[int, int, str]]] = {}
+    outputs: list[str] = []
 
     for query in queries:
         queryType = query[0]
         
         if queryType == "BOOK":
-            agenda = bookHandler(query, agenda)
+            outputs.append(bookHandler(query, agenda))
         elif queryType == "CANCEL":
-            agenda = cancelHandler(query, agenda)
+            outputs.append(cancelHandler(query, agenda))
         elif queryType == "MOVE":
-            agenda = moveHandler(query, agenda)
+            outputs.append(moveHandler(query, agenda))
         elif queryType == "FREE":
-            agenda = freeHandler(query, agenda)
+            outputs.append(freeHandler(query, agenda))
         elif queryType == "AGENDA":
-            print(agendaHandler(query, agenda))
+            outputs.append(agendaHandler(query, agenda))
+        else:
+            raise ValueError(f"Unknown query type: {queryType!r}")
 
+    return outputs
 
 
 def bookHandler(query, agenda):
@@ -83,7 +86,7 @@ def bookHandler(query, agenda):
     title = str(query[4])
 
     if start >= end:
-        return agenda
+        return "false"
 
     # Get room dict values
     events = agenda.setdefault(room, [])
@@ -91,29 +94,32 @@ def bookHandler(query, agenda):
     # If start is before previous ends, and end is after previous starts, return old agenda
     for agenda_start, agenda_end, agenda_title in events:
         if start < agenda_end and agenda_start < end:
-            return agenda
+            return "false"
 
     # We know now that the event can be booked
     events.append((start, end, title))
-    return agenda
+    events.sort(key=lambda x: (x[0], x[1], x[2]))
+    return "true"
     
 
 def cancelHandler(query, agenda):
     room = str(query[1])
     title = str(query[2])
 
-    # Get room dict values
-    events = agenda.setdefault(room, [])
-    for agenda_start, agenda_end, agenda_title in events:
-        potentialRemove = []
-        # First check for multiple events with same title
-        if agenda_title == title:
-            potentialRemove.append((agenda_start, agenda_end, agenda_title))
-        
-        # Sort by start time
-        potentialRemove.sort(key=lambda x: x[0])
-        events.remove(potentialRemove[0])
-        return agenda
+    events = agenda.get(room, [])
+    idx = None
+    best = None
+    for i, (agenda_start, agenda_end, agenda_title) in enumerate(events):
+        if agenda_title != title:
+            continue
+        cand = (agenda_start, agenda_end, agenda_title)
+        if best is None or cand < best:
+            best = cand
+            idx = i
+    if idx is None:
+        return "false"
+    del events[idx]
+    return "true"
 
             
 
@@ -124,29 +130,80 @@ def moveHandler(query, agenda):
     new_end = int(query[4])
 
     if new_start >= new_end:
-        return agenda
+        return "false"
 
-    # Get room dict values
-    events = agenda.setdefault(room, [])
+    events = agenda.get(room, [])
+    idx = None
+    best = None
+    for i, (agenda_start, agenda_end, agenda_title) in enumerate(events):
+        if agenda_title != title:
+            continue
+        cand = (agenda_start, agenda_end, agenda_title)
+        if best is None or cand < best:
+            best = cand
+            idx = i
+    if idx is None:
+        return "false"
+
+    old_event = events.pop(idx)
+
+    # Fail check if we cannot add event to cleared agenda
     for agenda_start, agenda_end, agenda_title in events:
-        potentialRemove = []
-        # First check for multiple events with same title
-        if agenda_title == title:
-            potentialRemove.append((agenda_start, agenda_end, agenda_title))
-        
-        # Sort by start time
-        potentialRemove.sort(key=lambda x: x[0])
-        old_event = potentialRemove[0]
-        events.remove(old_event)
+        if new_start < agenda_end and agenda_start < new_end:
+            # Fail move and re-add the event
+            events.append(old_event)
+            events.sort(key=lambda x: (x[0], x[1], x[2]))
+            return "false"
 
+    # All checks passed, move event (just re-add it)
     events.append((new_start, new_end, title))
-    return agenda
+    events.sort(key=lambda x: (x[0], x[1], x[2]))
+    return "true"
 
 
+def freeHandler(query, agenda):
+    room = str(query[1])
+    start = int(query[2])
+    end = int(query[3])
 
-def freeHandler():
+    if start >= end:
+        return "0"
 
-def agendaHandler():
+    events = agenda.get(room, [])
+    segments: list[tuple[int, int]] = []
+    for agenda_start, agenda_end, agenda_title in events:
+        ss, ee = max(start, agenda_start), min(end, agenda_end)
+        if ss < ee:
+            segments.append((ss, ee))
+
+    segments.sort()
+    covered = 0
+    cur_s = None
+    cur_e = None
+    for ss, ee in segments:
+        if cur_s is None:
+            cur_s, cur_e = ss, ee
+            continue
+        if ss <= cur_e:
+            cur_e = max(cur_e, ee)
+        else:
+            covered += cur_e - cur_s
+            cur_s, cur_e = ss, ee
+    if cur_s is not None and cur_e is not None:
+        covered += cur_e - cur_s
+
+    return str((end - start) - covered)
+            
+def agendaHandler(query, agenda):
+    room = str(query[1])
+    events = agenda.get(room, [])
+    if not events:
+        return ""
+    
+    # Format output
+    events_sorted = sorted(events, key=lambda x: (x[0], x[1], x[2]))
+    return ",".join(f"{agenda_start}-{agenda_end}:{agenda_title}" for agenda_start, agenda_end, agenda_title in events_sorted)
+    
 
 
 if __name__ == "__main__":
